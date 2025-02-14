@@ -46,15 +46,22 @@ public:
 
   void onUnsubscribeResult(const uint64_t requestId, const char *channelName, RTM_ERROR_CODE errorCode) override ;
 
-  virtual void onTopicEvent(const TopicEvent& event)override
-  {}
-  virtual void onJoinResult(const uint64_t requestId, const char* channelName, const char* userId, RTM_ERROR_CODE errorCode) override
-  {}
-  virtual void onLeaveResult(const uint64_t requestId, const char* channelName, const char* userId, RTM_ERROR_CODE errorCode) override
-  {}
-  virtual void onJoinTopicResult(const uint64_t requestId, const char* channelName, const char* userId, const char* topic, const char* meta, RTM_ERROR_CODE errorCode) 
-  {
-  }
+  // stream channel callback
+  
+
+void onJoinResult(const uint64_t requestId, const char* channelName, const char* userId,
+RTM_ERROR_CODE errorCode) override {
+
+}
+
+void onJoinTopicResult(const uint64_t requestId, const char* channelName, const char* userId,
+const char* topic, const char* meta, RTM_ERROR_CODE errorCode) override {
+
+}
+
+void onSubscribeTopicResult(const uint64_t requestId, const char* channelName, const char* userId, const char* topic, UserList succeedUsers, UserList failedUsers, RTM_ERROR_CODE errorCode) override {
+
+}
 
 private:
   ServerBase* rtminst_;

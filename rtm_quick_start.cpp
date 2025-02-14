@@ -110,6 +110,7 @@ int EchoServer::init()
     sub();
 
     // get stream channle
+    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
     errCode = streamchannel_init(channel_.c_str());
     
     if ( errorCode != 0)
@@ -146,7 +147,7 @@ int EchoServer::streamchannel_init(const char *channel)
     printf("create stream channel: err = %d, reason = %s\n", errCode, getErrorReason(errCode));
     return -1;
   }
-  std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 
   // do join channel
   JoinChannelOptions joinpotion;
@@ -154,14 +155,14 @@ int EchoServer::streamchannel_init(const char *channel)
 
   streamChannel_->join(joinpotion, requestID);
   printf ("streamchannel-join\n");
-  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 
   // join topic
   JoinTopicOptions topicOption;
 
-  streamChannel_->joinTopic(channel_.c_str(), topicOption, requestID);
+ //streamChannel_->joinTopic(channel_.c_str(), topicOption, requestID);
   printf("streamchannel jointopic\n");
-  std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 
 }
 int EchoServer::doMessage(const agora::rtm::IRtmEventHandler::MessageEvent &event)
