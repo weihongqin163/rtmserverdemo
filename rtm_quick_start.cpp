@@ -160,7 +160,7 @@ int EchoServer::streamchannel_init(const char *channel)
   // join topic
   JoinTopicOptions topicOption;
 
- //streamChannel_->joinTopic(channel_.c_str(), topicOption, requestID);
+ streamChannel_->joinTopic(channel_.c_str(), topicOption, requestID);
   printf("streamchannel jointopic\n");
   std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 
