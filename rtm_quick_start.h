@@ -9,6 +9,7 @@
 
 
 #include "IAgoraRtmClient.h"
+#include "IAgoraStreamChannel.h"
 using namespace agora::rtm;
 
 class RtmDemo;
@@ -44,6 +45,17 @@ public:
   void onSubscribeResult(const uint64_t requestId, const char *channelName, RTM_ERROR_CODE errorCode) override ;
 
   void onUnsubscribeResult(const uint64_t requestId, const char *channelName, RTM_ERROR_CODE errorCode) override ;
+
+  virtual void onTopicEvent(const TopicEvent& event)override
+  {}
+  virtual void onJoinResult(const uint64_t requestId, const char* channelName, const char* userId, RTM_ERROR_CODE errorCode) override
+  {}
+  virtual void onLeaveResult(const uint64_t requestId, const char* channelName, const char* userId, RTM_ERROR_CODE errorCode) override
+  {}
+  virtual void onJoinTopicResult(const uint64_t requestId, const char* channelName, const char* userId, const char* topic, const char* meta, RTM_ERROR_CODE errorCode) 
+  {
+  }
+
 private:
   ServerBase* rtminst_;
 
@@ -71,12 +83,16 @@ class EchoServer:public ServerBase
   protected:
     int sub();
     int unSub();
+    //stream channle related
+    int streamchannel_init(const char *channel);
+    int streamchannel_leave();
   private:
     IRtmEventHandler* eventHandler_;
     IRtmClient* rtmClient_;
     std::string channel_;
     std::string appid_;
     std::string userid_;
+    IStreamChannel *streamChannel_;
 
 };
 

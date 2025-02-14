@@ -9,27 +9,7 @@
 #include "IAgoraRtmClient.h"
 #include "rtm_quick_start.h"
 
-// Pass in your App ID here
-const std::string APP_ID = "aab8b8f5a8cd4469a63042fcfafe7063";
 
-// Terminal color codes for UBUNTU/LINUX
-#define RESET   "\033[0m"
-#define BLACK   "\033[30m"      /* Black */
-#define RED     "\033[31m"      /* Red */
-#define GREEN   "\033[32m"      /* Green */
-#define YELLOW  "\033[33m"      /* Yellow */
-#define BLUE    "\033[34m"      /* Blue */
-#define MAGENTA "\033[35m"      /* Magenta */
-#define CYAN    "\033[36m"      /* Cyan */
-#define WHITE   "\033[37m"      /* White */
-#define BOLDBLACK   "\033[1m\033[30m"      /* Bold Black */
-#define BOLDRED     "\033[1m\033[31m"      /* Bold Red */
-#define BOLDGREEN   "\033[1m\033[32m"      /* Bold Green */
-#define BOLDYELLOW  "\033[1m\033[33m"      /* Bold Yellow */
-#define BOLDBLUE    "\033[1m\033[34m"      /* Bold Blue */
-#define BOLDMAGENTA "\033[1m\033[35m"      /* Bold Magenta */
-#define BOLDCYAN    "\033[1m\033[36m"      /* Bold Cyan */
-#define BOLDWHITE   "\033[1m\033[37m"      /* Bold White */
 
 using namespace agora::rtm;
 class RtmDemo;
@@ -96,10 +76,12 @@ EchoServer::EchoServer(std::string &appid, std::string& channel, std::string& us
   userid_ = userid;
   eventHandler_ = new RtmEventHandler(this);
   rtmClient_ = nullptr;
+  streamChannel_ = nullptr;
 
 }
 int EchoServer::init()
 {
+  int errCode = 0;
   //1. validith check
   if (rtmClient_) return 0;
 
@@ -126,6 +108,15 @@ int EchoServer::init()
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     // then do sub
     sub();
+
+    // get stream channle
+    errCode = streamchannel_init(channel_.c_str());
+    
+    if ( errorCode != 0)
+    {
+      printf ("stream channel error = %d, reason = %s\n", errCode, getErrorReason(errCode));
+    }
+    
   //3. sub
   return 1;
 }
@@ -140,6 +131,38 @@ int EchoServer::unSub()
   uint64_t requestId = 0;
   rtmClient_->unsubscribe(channel_.c_str(), requestId);
   return 0;
+}
+// joinchannle, and jointopic, and sub topic
+int EchoServer::streamchannel_init(const char *channel)
+{
+  int errCode = 0;
+  uint64_t requestID = 0;
+  if (!rtmClient_)
+    return -1;
+
+  streamChannel_ = rtmClient_->createStreamChannel(channel_.c_str(), errCode);
+  if (!streamChannel_ || errCode != 0)
+  {
+    printf("create stream channel: err = %d, reason = %s\n", errCode, getErrorReason(errCode));
+    return -1;
+  }
+  std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+  // do join channel
+  JoinChannelOptions joinpotion;
+  joinpotion.token = appid_.c_str();
+
+  streamChannel_->join(joinpotion, requestID);
+  printf ("streamchannel-join\n");
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+  // join topic
+  JoinTopicOptions topicOption;
+
+  streamChannel_->joinTopic(channel_.c_str(), topicOption, requestID);
+  printf("streamchannel jointopic\n");
+  std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
 }
 int EchoServer::doMessage(const agora::rtm::IRtmEventHandler::MessageEvent &event)
 {
