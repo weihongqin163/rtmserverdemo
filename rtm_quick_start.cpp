@@ -359,7 +359,7 @@ int g_stop = 1;
 // sig func process
 // 信号处理函数
 static void signalHandler(int signum) {
-  if (signum == SIGINT)
+  if (signum == SIGINT || signum == SIGTERM)
   {
     g_stop = 0;
   }
@@ -368,17 +368,18 @@ static void signalHandler(int signum) {
 //main functon
 int main(int argc, const char *argv[])
 {
- /*
-  //0. start daemon
+  signal(SIGTERM, signalHandler);  // 捕获 SIGTERM 信号（kill -15 命令默认发送的信号）
+  signal(SIGINT, signalHandler); 
+   // 1.2 start log
+  log_open();
+
+ 
+
+     //0. start daemon
   if (daemon(0, 0) == -1) {
     printf("daemon");
     return -1;
   } 
-  */
-  
-
-   // 1.2 start log
-   log_open();
   //1. get argc
   if (argc < 4)
   {
@@ -386,12 +387,10 @@ int main(int argc, const char *argv[])
     return -1;
   }
  
-  // 2.register sig
-  signal(SIGINT, signalHandler);
 
   // 3. parse argv
   std::string appid(argv[1]), channel(argv[2]), userid(argv[3]);
-  cbPrint("input: appid = %s, channel = %s, userid = %s\n", appid.c_str(), channel.c_str(), userid.c_str());
+  cbPrint("input: appid = %s, channel = %s, userid = %s,pid = %d\n", appid.c_str(), channel.c_str(), userid.c_str(), getpid());
 
   //4 start echo servcie and do loop
   EchoServer echoServer(appid, channel, userid);
@@ -403,12 +402,14 @@ int main(int argc, const char *argv[])
   }
   cbPrint("sig handler now\n");
 
+
   //5. reelase resource
   echoServer.release();
-  log_close();
+ 
 
   //6. exit now
   cbPrint("rtm ecoh service exit now..\n");
+  log_close();
 
   return 0;
 }
