@@ -1,10 +1,21 @@
-#include <iostream>
+
 #include <memory>
 #include <string>
 #include <exception>
 #include <thread>
 #include <chrono>
 #include <csignal>
+#include <unistd.h>
+#include <stdlib.h>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <iomanip>
+#include <ctime>
+#include <errno.h>
 
 #include "IAgoraRtmClient.h"
 #include "rtm_quick_start.h"
@@ -14,6 +25,88 @@
 using namespace agora::rtm;
 class RtmDemo;
 class RtmEventHandler;
+
+/**
+* global log funciton
+ */
+ //#define LOG_FILE_PATH "/var/log/my_daemon.log"
+ #define LOG_FILE_PATH "rtm_log.log"
+ static int log_fd = -1;
+ static char *log_buffer = nullptr;
+
+// 写入日志信息到文件
+static int log_open() {
+    // 以追加和创建模式打开日志文件，权限设置为 0644
+
+    if (log_fd != -1)
+      return 1; // 
+    log_fd = open(LOG_FILE_PATH, O_WRONLY | O_APPEND | O_CREAT|O_TRUNC, 0644);
+    if (log_fd == -1) {
+      printf ("open log file = %d\n", errno);
+        return -1;
+    }
+    // allocate log_buffer
+    if (!log_buffer)
+      log_buffer = new char [2048];
+    return log_fd;
+  }
+
+static void cbPrint(const char* fmt, ...) {
+  // validity check
+  if (log_fd == -1)
+    return ;
+  // 获取当前时间（精确到毫秒）
+  auto now = std::chrono::system_clock::now();
+  auto duration = now.time_since_epoch();
+  auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+
+  // 获取当前时间的时间戳并格式化为字符串
+  auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
+  std::time_t time = std::chrono::system_clock::to_time_t(now);
+  std::tm tm = *std::localtime(&time);
+
+  std::ostringstream timeStream;
+  timeStream << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+  timeStream << '.' << std::setw(3) << std::setfill('0') << (millis % 1000); // 精确到毫秒
+
+  std::string timestamp = timeStream.str();
+  auto len = timestamp.size();
+
+  // 使用 va_list 处理可变参数
+  va_list args;
+ 
+
+  // 创建一个足够大的缓冲区来存储格式化后的字符串
+  char* buffer = log_buffer;
+
+  // 将时间戳放到输出字符串的开头
+  sprintf(buffer, "%s ", timestamp.c_str());
+
+  // 再次使用 va_list 获取格式化后的字符串
+  va_start(args, fmt);
+  std::vsnprintf(buffer + len + 1, 2048, fmt, args); // 以时间戳为基础，追加格式化后的字符串
+  va_end(args);
+
+  // 输出最终的字符串
+  len = strlen (log_buffer);
+  
+  auto wrtie_len = write(log_fd, log_buffer, len);
+
+  // flush cache buffer 
+  fsync(log_fd);
+}
+static void log_close()
+{
+  if (log_fd == -1)
+    return;
+  close(log_fd);
+  log_fd = -1;
+
+  // release
+  if (log_buffer)
+    delete []log_buffer;
+  log_buffer = nullptr;
+}
 
 
 
@@ -27,40 +120,47 @@ RtmEventHandler IMPL
   }
 
   // Add the event listener
-  void RtmEventHandler::onLoginResult(const uint64_t requestId, RTM_ERROR_CODE errorCode)  {
-    cbPrint("onLoginResult, request id: %lld, errorCode: %d", requestId, errorCode);
+  void RtmEventHandler::onLoginResult( RTM_ERROR_CODE errorCode)  {
+    cbPrint("onLoginResult, request id: %lld, errorCode: %d\n", errorCode);
   }
 
   void RtmEventHandler::onLogoutResult(const uint64_t requestId, RTM_ERROR_CODE errorCode) {
-    cbPrint("onLogoutResult, request id: %lld, errorCode: %d", requestId, errorCode);
+    cbPrint("onLogoutResult, request id: %lld, errorCode: %d\n", requestId, errorCode);
   }
 
   void RtmEventHandler::onConnectionStateChanged(const char *channelName, RTM_CONNECTION_STATE state, RTM_CONNECTION_CHANGE_REASON reason)  {
-    cbPrint("onConnectionStateChanged, channelName: %s, state: %d, reason: %d", channelName, state, reason);
+    cbPrint("onConnectionStateChanged, channelName: %s, state: %d, reason: %d\n", channelName, state, reason);
   }
 
-  void RtmEventHandler::onLinkStateEvent(const LinkStateEvent& event)  {
-    cbPrint("onLinkStateEvent, state: %d -> %d, operation: %d, reason: %s", event.previousState, event.currentState, event.operation, event.reason);
-  }
+
 
   void RtmEventHandler::onPublishResult(const uint64_t requestId, RTM_ERROR_CODE errorCode)  {
-    cbPrint("onPublishResult request id: %lld result: %d", requestId, errorCode);
+    cbPrint("onPublishResult request id: %lld result: %d\n", requestId, errorCode);
   }
 
   void RtmEventHandler::onMessageEvent(const MessageEvent &event)  {
-    cbPrint("receive message from: %s, message: %s, type: %d", event.publisher, event.message, int(event.channelType));
+    cbPrint("receive message from: %s, message: %s, type: %d\n", event.publisher, event.message, int(event.channelType));
     if (rtminst_)
     {
       rtminst_->doMessage( event);
     }
   }
+  void RtmEventHandler::onTopicEvent(const TopicEvent& event)
+  {
+    if (event.type == RTM_TOPIC_EVENT_TYPE_REMOTE_JOIN_TOPIC ||
+    event.type == RTM_TOPIC_EVENT_TYPE_SNAPSHOT)
+    {
+      rtminst_->doSubTopic();
+    }
+
+  }
 
   void RtmEventHandler::onSubscribeResult(const uint64_t requestId, const char *channelName, RTM_ERROR_CODE errorCode)  {
-    cbPrint("onSubscribeResult: channel:%s, request id: %lld result: %d, reason = %s", channelName, requestId, errorCode, getErrorReason(errorCode));
+    cbPrint("onSubscribeResult: channel:%s, request id: %lld result: %d, reason = %s\n", channelName, requestId, errorCode, getErrorReason(errorCode));
   }
 
   void RtmEventHandler::onUnsubscribeResult(const uint64_t requestId, const char *channelName, RTM_ERROR_CODE errorCode)  {
-    cbPrint("onUnsubscribeResult: channel:%s, request id: %lld result: %d", channelName, requestId, errorCode);
+    cbPrint("onUnsubscribeResult: channel:%s, request id: %lld result: %d\n", channelName, requestId, errorCode);
   }
 
 
@@ -94,15 +194,22 @@ int EchoServer::init()
     config.eventHandler = eventHandler_;
     // Create an IRtmClient instance
     int errorCode = 0;
-    rtmClient_ = createAgoraRtmClient(config, errorCode);
-    if (!rtmClient_ || errorCode != 0) 
+    rtmClient_ = createAgoraRtmClient();
+    if (!rtmClient_ ) 
     {
-      printf("init error: %d, reason = %s\n", errorCode, getErrorReason(errorCode));
+      cbPrint("create error: %d, reason = %s\n", errorCode, getErrorReason(errorCode));
+      return -1;
+    }
+    //then do init
+    errorCode = rtmClient_->initialize(config);
+    if (errCode != 0)
+    {
+      cbPrint("init error: %d, reason = %s\n", errorCode, getErrorReason(errorCode));
       return -1;
     }
     // login
     uint64_t requestId = 0;
-    rtmClient_->login(appid_.c_str(), requestId);
+    rtmClient_->login(appid_.c_str());
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     // then do sub
     sub();
@@ -113,7 +220,7 @@ int EchoServer::init()
     
     if ( errorCode != 0)
     {
-      printf ("stream channel error = %d, reason = %s\n", errCode, getErrorReason(errCode));
+      cbPrint ("stream channel error = %d, reason = %s\n", errCode, getErrorReason(errCode));
     }
     
   //3. sub
@@ -128,7 +235,7 @@ int EchoServer::sub()
 int EchoServer::unSub()
 {
   uint64_t requestId = 0;
-  rtmClient_->unsubscribe(channel_.c_str(), requestId);
+  rtmClient_->unsubscribe(channel_.c_str());
   return 0;
 }
 // joinchannle, and jointopic, and sub topic
@@ -139,10 +246,10 @@ int EchoServer::streamchannel_init(const char *channel)
   if (!rtmClient_)
     return -1;
 
-  streamChannel_ = rtmClient_->createStreamChannel(channel_.c_str(), errCode);
-  if (!streamChannel_ || errCode != 0)
+  streamChannel_ = rtmClient_->createStreamChannel(channel_.c_str());
+  if (!streamChannel_ )
   {
-    printf("create stream channel: err = %d, reason = %s\n", errCode, getErrorReason(errCode));
+    cbPrint("create stream channel: err = %d, reason = %s\n", errCode, getErrorReason(errCode));
     return -1;
   }
   std::this_thread::sleep_for(std::chrono::milliseconds(3000));
@@ -152,15 +259,18 @@ int EchoServer::streamchannel_init(const char *channel)
   joinpotion.token = appid_.c_str();
 
   streamChannel_->join(joinpotion, requestID);
-  printf ("streamchannel-join\n");
+  cbPrint ("streamchannel-join\n");
   std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 
   // join topic
   JoinTopicOptions topicOption;
 
  streamChannel_->joinTopic(channel_.c_str(), topicOption, requestID);
-  printf("streamchannel jointopic\n");
+ cbPrint("streamchannel jointopic\n");
   std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+  TopicOptions subTopicInfo;
+  requestID = 0;
+  streamChannel_->subscribeTopic(channel_.c_str(), subTopicInfo, requestID);
   return 0;
 
 }
@@ -169,7 +279,7 @@ int EchoServer::doMessage(const agora::rtm::IRtmEventHandler::MessageEvent &even
   //1. validith check
   if (!rtmClient_)
   {
-    printf("invalid rtm\n");
+    cbPrint("invalid rtm\n");
     return -1;
   }
   uint64_t requestId = 0;
@@ -191,11 +301,21 @@ int EchoServer::doMessage(const agora::rtm::IRtmEventHandler::MessageEvent &even
     TopicMessageOptions topicOptions;
     requestId = 0;
      
-    streamChannel_->publishTopicMessage(channel_.c_str(), message.c_str(), message.size(), topicOptions, requestId);
+    streamChannel_->publishTopicMessage(channel_.c_str(), message.c_str(), message.size(), topicOptions);
   
   }
   
   return 0;
+}
+int EchoServer::doSubTopic()
+{
+  if (streamChannel_)
+  {
+    TopicOptions subTopicInfo;
+    uint64_t requestID = 0;
+    streamChannel_->subscribeTopic(channel_.c_str(), subTopicInfo, requestID);
+  }
+  return 1;
 }
 void EchoServer::release()
 {
@@ -206,7 +326,7 @@ void EchoServer::release()
   //sleep some time
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
   uint64_t requestID = 0;
-  rtmClient_->logout(requestID);
+  rtmClient_->logout();
   // sleep some
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
   rtmClient_->release();
@@ -248,18 +368,30 @@ static void signalHandler(int signum) {
 //main functon
 int main(int argc, const char *argv[])
 {
+ /*
+  //0. start daemon
+  if (daemon(0, 0) == -1) {
+    printf("daemon");
+    return -1;
+  } 
+  */
+  
+
+   // 1.2 start log
+   log_open();
   //1. get argc
   if (argc < 4)
   {
-    printf ("argc = %d, usage = %s\n", argc, usage);
+    cbPrint ("argc = %d, usage = %s\n", argc, usage);
     return -1;
   }
+ 
   // 2.register sig
   signal(SIGINT, signalHandler);
 
   // 3. parse argv
   std::string appid(argv[1]), channel(argv[2]), userid(argv[3]);
-  printf("input: appid = %s, channel = %s, userid = %s\n", appid.c_str(), channel.c_str(), userid.c_str());
+  cbPrint("input: appid = %s, channel = %s, userid = %s\n", appid.c_str(), channel.c_str(), userid.c_str());
 
   //4 start echo servcie and do loop
   EchoServer echoServer(appid, channel, userid);
@@ -269,13 +401,14 @@ int main(int argc, const char *argv[])
   {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
-  printf("sig handler now\n");
+  cbPrint("sig handler now\n");
 
   //5. reelase resource
   echoServer.release();
+  log_close();
 
   //6. exit now
-  printf("rtm ecoh service exit now..\n");
+  cbPrint("rtm ecoh service exit now..\n");
 
   return 0;
 }

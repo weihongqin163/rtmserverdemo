@@ -68,14 +68,7 @@ struct JoinChannelOptions {
    */
   bool withLock;
 
-  /**
-   * Whether to join channel in quiet mode
-   * Quiet mode means remote user will not receive any notification when we join  or
-   * leave or change our presence state
-   */
-  bool beQuiet;
-
-  JoinChannelOptions() : token(NULL), withMetadata(false), withPresence(true), withLock(false), beQuiet(false) {}
+  JoinChannelOptions() : token(NULL), withMetadata(false), withPresence(true), withLock(false) {}
 };
 
 /**
@@ -104,8 +97,7 @@ struct JoinTopicOptions {
 
   JoinTopicOptions() : qos(RTM_MESSAGE_QOS_UNORDERED),
                        priority(RTM_MESSAGE_PRIORITY_NORMAL),
-                       meta(NULL),
-                       syncWithMedia(false) {}
+                       meta(NULL) {}
 };
 
 /**
@@ -139,7 +131,7 @@ class IStreamChannel {
    * - 0: Success.
    * - < 0: Failure.
    */
-  virtual void join(const JoinChannelOptions& options, uint64_t& requestId) = 0;
+  virtual int join(const JoinChannelOptions& options, uint64_t& requestId) = 0;
 
   /**
    * Renews the token. Once a token is enabled and used, it expires after a certain period of time.
@@ -149,7 +141,7 @@ class IStreamChannel {
    * - 0: Success.
    * - < 0: Failure.
    */
-  virtual void renewToken(const char* token, uint64_t& requestId) = 0;
+  virtual int renewToken(const char* token) = 0;
 
   /**
    * Leave the channel.
@@ -158,7 +150,7 @@ class IStreamChannel {
    * - 0: Success.
    * - < 0: Failure.
    */
-  virtual void leave(uint64_t& requestId) = 0;
+  virtual int leave(uint64_t& requestId) = 0;
 
   /**
    * Return the channel name of this stream channel.
@@ -176,7 +168,7 @@ class IStreamChannel {
    * - 0: Success.
    * - < 0: Failure.
    */
-  virtual void joinTopic(const char* topic, const JoinTopicOptions& options, uint64_t& requestId) = 0;
+  virtual int joinTopic(const char* topic, const JoinTopicOptions& options, uint64_t& requestId) = 0;
 
   /**
    * Publish a message in the topic.
@@ -189,7 +181,7 @@ class IStreamChannel {
    * - 0: Success.
    * - < 0: Failure.
    */
-  virtual void publishTopicMessage(const char* topic, const char* message, size_t length, const TopicMessageOptions& option, uint64_t& requestId) = 0;
+  virtual int publishTopicMessage(const char* topic, const char* message, size_t length, const TopicMessageOptions& option) = 0;
 
   /**
    * Leave the topic.
@@ -199,7 +191,7 @@ class IStreamChannel {
    * - 0: Success.
    * - < 0: Failure.
    */
-  virtual void leaveTopic(const char* topic, uint64_t& requestId) = 0;
+  virtual int leaveTopic(const char* topic, uint64_t& requestId) = 0;
 
   /**
    * Subscribe a topic.
@@ -210,7 +202,7 @@ class IStreamChannel {
    * - 0: Success.
    * - < 0: Failure.
    */
-  virtual void subscribeTopic(const char* topic, const TopicOptions& options, uint64_t& requestId) = 0;
+  virtual int subscribeTopic(const char* topic, const TopicOptions& options, uint64_t& requestId) = 0;
 
   /**
    * Unsubscribe a topic.
@@ -220,7 +212,7 @@ class IStreamChannel {
    * - 0: Success.
    * - < 0: Failure.
    */
-  virtual void unsubscribeTopic(const char* topic, const TopicOptions& options, uint64_t& requestId) = 0;
+  virtual int unsubscribeTopic(const char* topic, const TopicOptions& options) = 0;
 
   /**
    * Get subscribed user list
@@ -231,7 +223,7 @@ class IStreamChannel {
    * - 0: Success.
    * - < 0: Failure.
    */
-  virtual void getSubscribedUserList(const char* topic, uint64_t& requestId) = 0;
+  virtual int getSubscribedUserList(const char* topic, UserList* users) = 0;
 
   /**
    * Release the stream channel instance.

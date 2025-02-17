@@ -20,6 +20,7 @@ class ServerBase
 {
   public:
   virtual int doMessage(const agora::rtm::IRtmEventHandler::MessageEvent &event) = 0;
+  virtual int doSubTopic() = 0;
   virtual ~ServerBase(){};
 
 };
@@ -31,20 +32,22 @@ class RtmEventHandler : public IRtmEventHandler {
   RtmEventHandler(ServerBase* inst);
 public:
   // Add the event listener
-  void onLoginResult(const uint64_t requestId, RTM_ERROR_CODE errorCode) override ;
+  void onLoginResult(RTM_ERROR_CODE errorCode) override ;
 
   void onLogoutResult(const uint64_t requestId, RTM_ERROR_CODE errorCode);
 
   void onConnectionStateChanged(const char *channelName, RTM_CONNECTION_STATE state, RTM_CONNECTION_CHANGE_REASON reason) override ;
 
-  void onLinkStateEvent(const LinkStateEvent& event) override ;
+
   void onPublishResult(const uint64_t requestId, RTM_ERROR_CODE errorCode) override ;
 
   void onMessageEvent(const MessageEvent &event) override ;
+  void onTopicEvent(const TopicEvent& event);
 
-  void onSubscribeResult(const uint64_t requestId, const char *channelName, RTM_ERROR_CODE errorCode) override ;
 
-  void onUnsubscribeResult(const uint64_t requestId, const char *channelName, RTM_ERROR_CODE errorCode) override ;
+  void onSubscribeResult(const uint64_t requestId, const char *channelName, RTM_ERROR_CODE errorCode)  ;
+
+  void onUnsubscribeResult(const uint64_t requestId, const char *channelName, RTM_ERROR_CODE errorCode)  ;
 
   // stream channel callback
   
@@ -67,14 +70,7 @@ private:
   ServerBase* rtminst_;
 
 private:
-  void cbPrint(const char* fmt, ...) {
-    printf("\x1b[32m*** RTM async callback: ");
-    va_list args;
-    va_start(args, fmt);
-    vprintf(fmt, args);
-    va_end(args);
-    printf(" \x1b[0m\n");
-  }
+  
 };
 
 // echo server
@@ -87,6 +83,7 @@ class EchoServer:public ServerBase
     void release();
   public:
     int  doMessage(const agora::rtm::IRtmEventHandler::MessageEvent &event) override;
+    int doSubTopic() override;
   protected:
     int sub();
     int unSub();

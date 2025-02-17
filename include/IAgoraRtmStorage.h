@@ -68,29 +68,50 @@ struct MetadataItem {
           updateTs(0) {}
 };
 
-struct Metadata {
+class IMetadata {
+ public:
   /**
-   * the major revision of metadata.
-  */
-  int64_t majorRevision;
-
-  /**
-   * The metadata item array.
+   * Set the major revision of metadata.
+   *
+   * @param [in] revision The major revision of the metadata.
    */
-  MetadataItem* items;
+  virtual void setMajorRevision(const int64_t revision) = 0;
   /**
-   * The items count.
+   * Get the major revision of metadata.
+   *
+   * @return the major revision of metadata.
    */
-  size_t itemCount;
-
-  Metadata()
-        : majorRevision(-1),
-          items(NULL),
-          itemCount(0) {}
+  virtual int64_t getMajorRevision() const = 0;
+  /**
+   * Add or revise a metadataItem to current metadata.
+   */
+  virtual void setMetadataItem(const MetadataItem& item) = 0;
+  /**
+   * Get the metadataItem array of current metadata.
+   *
+   * @param [out] items The address of the metadataItem array.
+   * @param [out] size The size the metadataItem array.
+   */
+  virtual void getMetadataItems(const MetadataItem** items, size_t* size) const = 0;
+  /**
+   * Clear the metadataItem array & reset major revision
+   */
+  virtual void clearMetadata() = 0;
+  /**
+   * Release the metadata instance.
+   */
+  virtual void release() = 0;
+ protected:
+  virtual ~IMetadata() {}
 };
 
 class IRtmStorage {
  public:
+  /** Creates the metadata object and returns the pointer.
+  * @return Pointer of the metadata object.
+  */
+  virtual IMetadata* createMetadata() = 0;
+
   /**
    * Set the metadata of a specified channel.
    *
@@ -105,8 +126,8 @@ class IRtmStorage {
    * - 0: Success.
    * - < 0: Failure.
    */
-  virtual void setChannelMetadata(
-      const char* channelName, RTM_CHANNEL_TYPE channelType, const Metadata& data, const MetadataOptions& options, const char* lockName, uint64_t& requestId) = 0;
+  virtual int setChannelMetadata(
+      const char* channelName, RTM_CHANNEL_TYPE channelType, const IMetadata* data, const MetadataOptions& options, const char* lockName, uint64_t& requestId) = 0;
   /**
    * Update the metadata of a specified channel.
    *
@@ -121,8 +142,8 @@ class IRtmStorage {
    * - 0: Success.
    * - < 0: Failure.
    */
-  virtual void updateChannelMetadata(
-      const char* channelName, RTM_CHANNEL_TYPE channelType, const Metadata& data, const MetadataOptions& options, const char* lockName, uint64_t& requestId) = 0;
+  virtual int updateChannelMetadata(
+      const char* channelName, RTM_CHANNEL_TYPE channelType, const IMetadata* data, const MetadataOptions& options, const char* lockName, uint64_t& requestId) = 0;
   /**
    * Remove the metadata of a specified channel.
    *
@@ -137,8 +158,8 @@ class IRtmStorage {
    * - 0: Success.
    * - < 0: Failure.
    */
-  virtual void removeChannelMetadata(
-      const char* channelName, RTM_CHANNEL_TYPE channelType, const Metadata& data, const MetadataOptions& options, const char* lockName, uint64_t& requestId) = 0;
+  virtual int removeChannelMetadata(
+      const char* channelName, RTM_CHANNEL_TYPE channelType, const IMetadata* data, const MetadataOptions& options, const char* lockName, uint64_t& requestId) = 0;
   /**
    * Get the metadata of a specified channel.
    *
@@ -150,7 +171,7 @@ class IRtmStorage {
    * - 0: Success.
    * - < 0: Failure.
    */
-  virtual void getChannelMetadata(
+  virtual int getChannelMetadata(
       const char* channelName, RTM_CHANNEL_TYPE channelType, uint64_t& requestId) = 0;
 
   /**
@@ -165,8 +186,8 @@ class IRtmStorage {
    * - 0: Success.
    * - < 0: Failure.
    */
-  virtual void setUserMetadata(
-      const char* userId, const Metadata& data, const MetadataOptions& options, uint64_t& requestId) = 0;
+  virtual int setUserMetadata(
+      const char* userId, const IMetadata* data, const MetadataOptions& options, uint64_t& requestId) = 0;
   /**
    * Update the metadata of a specified user.
    *
@@ -179,8 +200,8 @@ class IRtmStorage {
    * - 0: Success.
    * - < 0: Failure.
    */
-  virtual void updateUserMetadata(
-      const char* userId, const Metadata& data, const MetadataOptions& options, uint64_t& requestId) = 0;
+  virtual int updateUserMetadata(
+      const char* userId, const IMetadata* data, const MetadataOptions& options, uint64_t& requestId) = 0;
   /**
    * Remove the metadata of a specified user.
    *
@@ -193,8 +214,8 @@ class IRtmStorage {
    * - 0: Success.
    * - < 0: Failure.
    */
-  virtual void removeUserMetadata(
-      const char* userId, const Metadata& data, const MetadataOptions& options, uint64_t& requestId) = 0;
+  virtual int removeUserMetadata(
+      const char* userId, const IMetadata* data, const MetadataOptions& options, uint64_t& requestId) = 0;
   /**
    * Get the metadata of a specified user.
    *
@@ -205,7 +226,7 @@ class IRtmStorage {
    * - 0: Success.
    * - < 0: Failure.
    */
-  virtual void getUserMetadata(const char* userId, uint64_t& requestId) = 0;
+  virtual int getUserMetadata(const char* userId, uint64_t& requestId) = 0;
 
   /**
    * Subscribe the metadata update event of a specified user.
@@ -216,7 +237,7 @@ class IRtmStorage {
    * - 0: Success.
    * - < 0: Failure.
    */
-  virtual void subscribeUserMetadata(const char* userId, uint64_t& requestId) = 0;
+  virtual int subscribeUserMetadata(const char* userId, uint64_t& requestId) = 0;
   /**
    * unsubscribe the metadata update event of a specified user.
    *
@@ -226,7 +247,7 @@ class IRtmStorage {
    * - 0: Success.
    * - < 0: Failure.
    */
-  virtual void unsubscribeUserMetadata(const char* userId, uint64_t& requestId) = 0;
+  virtual int unsubscribeUserMetadata(const char* userId) = 0;
 
  protected:
   virtual ~IRtmStorage() {}
