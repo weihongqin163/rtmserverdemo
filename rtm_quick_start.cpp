@@ -48,11 +48,9 @@ RtmEventHandler IMPL
   }
 
   void RtmEventHandler::onMessageEvent(const MessageEvent &event)  {
-    cbPrint("receive message from: %s, message: %s", event.publisher, event.message);
+    cbPrint("receive message from: %s, message: %s, type: %d", event.publisher, event.message, int(event.channelType));
     if (rtminst_)
     {
-      std::string strChannel(event.channelName);
-      std::string msg(event.message);
       rtminst_->doMessage( event);
     }
   }
@@ -163,22 +161,40 @@ int EchoServer::streamchannel_init(const char *channel)
  streamChannel_->joinTopic(channel_.c_str(), topicOption, requestID);
   printf("streamchannel jointopic\n");
   std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+  return 0;
 
 }
 int EchoServer::doMessage(const agora::rtm::IRtmEventHandler::MessageEvent &event)
 {
+  //1. validith check
   if (!rtmClient_)
   {
     printf("invalid rtm\n");
     return -1;
   }
-  PublishOptions options;
-  options.messageType = RTM_MESSAGE_TYPE_STRING;
-  options.channelType = RTM_CHANNEL_TYPE_MESSAGE;
   uint64_t requestId = 0;
   std::string message(event.message);
-  rtmClient_->publish(channel_.c_str(), message.c_str(), message.size(), options, requestId);
+  if (event.channelType == RTM_CHANNEL_TYPE_MESSAGE )
+  {
+    //echo back to rtmclient_ 
+    PublishOptions options;
+    options.messageType = event.messageType;
+    options.channelType = RTM_CHANNEL_TYPE_MESSAGE;
+    requestId = 0;
     
+    rtmClient_->publish(channel_.c_str(), message.c_str(), message.size(), options, requestId);
+  
+  }
+  if (event.channelType == RTM_CHANNEL_TYPE_STREAM && streamChannel_)
+  {
+    // echo back to stream channel
+    TopicMessageOptions topicOptions;
+    requestId = 0;
+     
+    streamChannel_->publishTopicMessage(channel_.c_str(), message.c_str(), message.size(), topicOptions, requestId);
+  
+  }
+  
   return 0;
 }
 void EchoServer::release()
