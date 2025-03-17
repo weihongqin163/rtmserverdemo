@@ -32,7 +32,7 @@ class RtmEventHandler : public IRtmEventHandler {
   RtmEventHandler(ServerBase* inst);
 public:
   // Add the event listener
-  void onLoginResult(RTM_ERROR_CODE errorCode) override ;
+  void onLoginResult(const uint64_t requestId, RTM_ERROR_CODE errorCode) override ;
 
   void onLogoutResult(const uint64_t requestId, RTM_ERROR_CODE errorCode);
 

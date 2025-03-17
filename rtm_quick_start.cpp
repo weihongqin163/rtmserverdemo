@@ -120,8 +120,8 @@ RtmEventHandler IMPL
   }
 
   // Add the event listener
-  void RtmEventHandler::onLoginResult( RTM_ERROR_CODE errorCode)  {
-    cbPrint("onLoginResult, request id: %lld, errorCode: %d\n", errorCode);
+  void RtmEventHandler::onLoginResult( const uint64_t requestId, RTM_ERROR_CODE errorCode)  {
+    cbPrint("onLoginResult, request id: %lld, errorCode: %d\n", requestId, errorCode);
   }
 
   void RtmEventHandler::onLogoutResult(const uint64_t requestId, RTM_ERROR_CODE errorCode) {
@@ -194,22 +194,23 @@ int EchoServer::init()
     config.eventHandler = eventHandler_;
     // Create an IRtmClient instance
     int errorCode = 0;
-    rtmClient_ = createAgoraRtmClient();
+    rtmClient_ = createAgoraRtmClient(config, errCode);
     if (!rtmClient_ ) 
     {
       cbPrint("create error: %d, reason = %s\n", errorCode, getErrorReason(errorCode));
       return -1;
     }
     //then do init
+    /* 
     errorCode = rtmClient_->initialize(config);
     if (errCode != 0)
     {
       cbPrint("init error: %d, reason = %s\n", errorCode, getErrorReason(errorCode));
       return -1;
-    }
+    }*/
     // login
     uint64_t requestId = 0;
-    rtmClient_->login(appid_.c_str());
+    rtmClient_->login(appid_.c_str(), requestId);
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     // then do sub
     sub();
@@ -235,7 +236,7 @@ int EchoServer::sub()
 int EchoServer::unSub()
 {
   uint64_t requestId = 0;
-  rtmClient_->unsubscribe(channel_.c_str());
+  rtmClient_->unsubscribe(channel_.c_str(), requestId);
   return 0;
 }
 // joinchannle, and jointopic, and sub topic
@@ -246,7 +247,7 @@ int EchoServer::streamchannel_init(const char *channel)
   if (!rtmClient_)
     return -1;
 
-  streamChannel_ = rtmClient_->createStreamChannel(channel_.c_str());
+  streamChannel_ = rtmClient_->createStreamChannel(channel_.c_str(), errCode);
   if (!streamChannel_ )
   {
     cbPrint("create stream channel: err = %d, reason = %s\n", errCode, getErrorReason(errCode));
@@ -301,7 +302,7 @@ int EchoServer::doMessage(const agora::rtm::IRtmEventHandler::MessageEvent &even
     TopicMessageOptions topicOptions;
     requestId = 0;
      
-    streamChannel_->publishTopicMessage(channel_.c_str(), message.c_str(), message.size(), topicOptions);
+    streamChannel_->publishTopicMessage(channel_.c_str(), message.c_str(), message.size(), topicOptions,requestId);
   
   }
   
@@ -325,8 +326,8 @@ void EchoServer::release()
   unSub();
   //sleep some time
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
-  uint64_t requestID = 0;
-  rtmClient_->logout();
+  uint64_t requestId = 0;
+  rtmClient_->logout(requestId);
   // sleep some
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
   rtmClient_->release();
