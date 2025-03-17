@@ -16,6 +16,7 @@
 #include <iomanip>
 #include <ctime>
 #include <errno.h>
+#include <libgen.h> 
 
 #include "IAgoraRtmClient.h"
 #include "rtm_quick_start.h"
@@ -192,6 +193,21 @@ int EchoServer::init()
     config.appId = appid_.c_str();
     config.userId = userid_.c_str();
     config.eventHandler = eventHandler_;
+
+    // get current file path
+    char currentPath[2048];
+    std::string strPath;
+    char path[2048];
+    ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
+    if (len != -1) {
+        path[len] = '\0'; // 确保字符串以 null 结尾
+        strPath = dirname(path);
+    }
+    strPath += "/rtm_sdk.log";
+    config.logConfig.filePath = strPath.c_str();
+    cbPrint("current log path: %s, %s, %d\n", strPath.c_str(), currentPath, errno);
+   
+    
     // Create an IRtmClient instance
     int errorCode = 0;
     rtmClient_ = createAgoraRtmClient(config, errCode);
