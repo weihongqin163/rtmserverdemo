@@ -301,6 +301,11 @@ int EchoServer::doMessage(const agora::rtm::IRtmEventHandler::MessageEvent &even
   }
   uint64_t requestId = 0;
   std::string message(event.message);
+  // added by wei on 2025-03-25, to add extra info to message
+  static char extraInfo[128];
+  static uint64_t echo_server_id = 0;
+  sprintf(extraInfo, "echo server: %lld", echo_server_id++);
+  message =  message + extraInfo;
   if (event.channelType == RTM_CHANNEL_TYPE_MESSAGE )
   {
     //echo back to rtmclient_ 
