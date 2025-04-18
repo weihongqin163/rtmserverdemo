@@ -17,6 +17,7 @@
 #include <ctime>
 #include <errno.h>
 #include <libgen.h> 
+#include <sys/time.h>
 
 #include "IAgoraRtmClient.h"
 #include "rtm_quick_start.h"
@@ -363,6 +364,13 @@ void EchoServer::release()
   rtmClient_ = nullptr;
   eventHandler_ = nullptr;
 }
+int EchoServer::renewToken()
+{
+  uint64_t requestId = 0;
+  if (rtmClient_)
+    rtmClient_->renewToken(appid_.c_str(), requestId);
+  return 0;
+}
 
 /**
 =============================
@@ -418,9 +426,24 @@ int main(int argc, const char *argv[])
   EchoServer echoServer(appid, channel, userid);
 
   echoServer.init();
+  struct timeval starttv, curtv;
+  gettimeofday(&starttv, NULL);
+  uint64_t tick = 0;
   while(g_stop)
   {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    tick++;
+    // every 10s
+    if (tick % 1000 == 0)
+    {
+      gettimeofday(&curtv, NULL);
+      if (curtv.tv_sec - starttv.tv_sec > 20*60*60)
+      {
+        echoServer.renewToken();
+        starttv.tv_sec = curtv.tv_sec;
+      }
+    }
+
   }
   cbPrint("sig handler now\n");
 

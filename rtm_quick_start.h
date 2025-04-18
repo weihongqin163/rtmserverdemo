@@ -84,6 +84,7 @@ class EchoServer:public ServerBase
   public:
     int  doMessage(const agora::rtm::IRtmEventHandler::MessageEvent &event) override;
     int doSubTopic() override;
+    int renewToken();
   protected:
     int sub();
     int unSub();
