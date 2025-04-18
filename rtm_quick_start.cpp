@@ -141,7 +141,17 @@ RtmEventHandler IMPL
   }
 
   void RtmEventHandler::onMessageEvent(const MessageEvent &event)  {
-    cbPrint("receive message from: %s, message: %s, type: %d\n", event.publisher, event.message, int(event.channelType));
+    int msglen = strlen(event.message);
+    if (msglen > 1024)
+    {
+      //only print first 10 
+      char szmsg[18];
+      memcpy(szmsg, event.message, 17);
+      szmsg[17] = '\0';
+      cbPrint("receive message from: %s, message: %s, type: %d\n", event.publisher, szmsg, int(event.channelType));
+    }
+    else
+      cbPrint("receive message from: %s, message: %s, type: %d\n", event.publisher, event.message, int(event.channelType));
     if (rtminst_)
     {
       rtminst_->doMessage( event);
